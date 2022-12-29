@@ -57,7 +57,7 @@ export default {
         is_done: true,
       })
       if (process.env.NODE_ENV === "development"){
-        window.location.href = "http://35.78.113.79:3000"+ '/todos'
+        window.location.href = process.env.hostUrlDev + '/todos'
         }
       else{
         window.location.href = process.env.hostUrl + '/todos'
@@ -68,7 +68,7 @@ export default {
         is_done: false,
       })
       if (process.env.NODE_ENV === "development"){
-        window.location.href = "http://35.78.113.79:3000"+ '/todos'
+        window.location.href = process.env.hostUrlDev + '/todos'
         }
       else{
         window.location.href = process.env.hostUrl + '/todos'
@@ -79,7 +79,7 @@ export default {
       if (confirmation) {
         if (process.env.NODE_ENV === "development"){
           await this.$axios.$delete(`/api/v1/todos/${this.todo.id}`)
-          window.location.href = "http://35.78.113.79:3000"+ '/todos'
+          window.location.href = process.env.hostUrlDev + '/todos'
         }
         else {
           await this.$axios.$delete(`/api/v1/todos/${this.todo.id}`)

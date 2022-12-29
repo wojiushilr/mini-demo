@@ -17,7 +17,7 @@ ActiveRecord::Schema.define(version: 2022_12_23_083040) do
 
   create_table "todos", force: :cascade do |t|
     t.string "title"
-    t.text "content", default: "hoge"
+    t.text "content"
     t.boolean "is_done", default: false
     t.date "date"
     t.time "time"

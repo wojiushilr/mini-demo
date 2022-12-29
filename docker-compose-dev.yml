@@ -1,0 +1,80 @@
+version: "3"
+
+services:
+  db:
+    container_name: todo-app-db
+    image: postgres:11.5
+    environment:
+      TZ: Asia/Tokyo
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_store:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    networks:
+      app_net:
+        ipv4_address: '172.10.0.2'
+
+  backend:
+    container_name: todo-app-backend
+    build: .
+    image: todo-app-backend
+    command: |
+      bash -c "bundle install -j4
+      rm -f tmp/pids/server.pid &&
+      bundle exec rails s -p 4000 -b '0.0.0.0'"
+    tty: true
+    stdin_open: true
+    volumes:
+      - ./:/app:cached
+      - bundle_data:/usr/local/bundle:cached
+      - /app/vendor
+      - /app/tmp
+      - /app/log
+      - /app/.git
+    environment:
+      - TZ=Asia/Tokyo
+      - TODO_APP_API_HOST=http://localhost:4000
+      - TODO_APP_FRONT_HOST=http://localhost:3000
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000
+    depends_on:
+      - db
+    ports:
+      - 4000:4000
+    networks:
+      app_net:
+        ipv4_address: "172.10.0.3"
+
+  frontend:
+    container_name: todo-app-frontend
+    build: ./frontend/
+    image: todo-app-frontend
+    environment:
+      - NODE_ENV=development
+      - NUXT_HOST=0.0.0.0
+      - NUXT_PORT=3000
+      - TODO_APP_API_HOST=http://localhost:4000
+      - TODO_APP_FRONT_HOST=http://localhost:3000
+    volumes:
+      - ./frontend:/app:cached
+    ports:
+      - 3000:3000
+    command: "yarn run dev"
+    networks:
+      app_net:
+        ipv4_address: "172.10.0.4"
+    depends_on:
+      - backend
+      - db
+
+networks:
+  app_net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.10.0.0/24
+
+volumes:
+  postgres_store:
+  bundle_data:

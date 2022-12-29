@@ -24,6 +24,9 @@ export default {
     apiUrl: process.env.TODO_APP_API_HOST
       ? process.env.TODO_APP_API_HOST
       : 'localhost:4000',
+    hostUrlDev: process.env.TODO_APP_FRONT_HOST_DEV
+      ? process.env.TODO_APP_FRONT_HOST_DEV
+      : 'localhost:3000',
   },
 
   // Global CSS (https://go.nuxtjs.dev/config-css)
@@ -56,12 +59,21 @@ export default {
     //   : 'localhost:4000',
       proxy: true
   },
+  // frontend と backendの間でnginxを挟んでいる
   proxy: {
     '/api/': {
-      target: 'http://todo-app-backend:4000',
-      // pathRewrite: {'^/api/': ''}
+      // target: 'http://35.78.113.79/', 
+      target: 'http://rails-app-fromzero-nginx-1/',
+      // pathRewrite: {'^/api/': '/'}
     },
   },
+
+  // proxy: {
+  //   '/api/': {
+  //     target: 'http://todo-app-backend:4000',
+  //     // pathRewrite: {'^/api/': ''}
+  //   },
+  // },
 
   vuetify: {
     customVariables: ['~/assets/variables.scss'],
@@ -78,5 +90,12 @@ export default {
   },
 
   // Build Configuration (https://go.nuxtjs.dev/config-build)
-  build: {},
+  build: {
+    /*
+    ** You can extend webpack config here
+    */
+    extend (config, ctx) {
+      config.performance.maxAssetSize = 700 * 1024
+    }
+  },
 }
