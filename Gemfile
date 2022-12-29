@@ -19,6 +19,8 @@ gem 'rack-cors'
 gem 'config'
 # JSONシリアライザ
 gem 'active_model_serializers', require: true
+# 環境変数.envを利用する
+gem 'dotenv-rails'
 
 group :development, :test do
   # Call 'byebug' anywhere in the code to stop execution and get a debugger console

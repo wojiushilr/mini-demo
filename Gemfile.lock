@@ -76,6 +76,10 @@ GEM
     crass (1.0.6)
     date (3.3.3)
     deep_merge (1.2.2)
+    dotenv (2.8.1)
+    dotenv-rails (2.8.1)
+      dotenv (= 2.8.1)
+      railties (>= 3.2)
     dry-configurable (1.0.1)
       dry-core (~> 1.0, < 2)
       zeitwerk (~> 2.6)
@@ -262,6 +266,7 @@ DEPENDENCIES
   bootsnap (>= 1.4.2)
   byebug
   config
+  dotenv-rails
   listen (~> 3.2)
   net-http
   pg (>= 0.18, < 2.0)
