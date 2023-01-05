@@ -1,0 +1,386 @@
+AWSTemplateFormatVersion: 2010-09-09
+Resources:
+  BackendService:
+    DependsOn:
+    - BackendTCP4000Listener
+    Properties:
+      Cluster:
+        Fn::GetAtt:
+        - Cluster
+        - Arn
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+      DeploymentController:
+        Type: ECS
+      DesiredCount: 1
+      LaunchType: FARGATE
+      LoadBalancers:
+      - ContainerName: backend
+        ContainerPort: 4000
+        TargetGroupArn:
+          Ref: BackendTCP4000TargetGroup
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+          - Ref: DefaultNetwork
+          Subnets:
+          - subnet-0e141cc935a96f9bf
+          - subnet-004447ce0a79fce0d
+      PlatformVersion: 1.4.0
+      PropagateTags: SERVICE
+      SchedulingStrategy: REPLICA
+      ServiceRegistries:
+      - RegistryArn:
+          Fn::GetAtt:
+          - BackendServiceDiscoveryEntry
+          - Arn
+      Tags:
+      - Key: com.docker.compose.project
+        Value: rails-app-fromzero
+      - Key: com.docker.compose.service
+        Value: backend
+      TaskDefinition:
+        Ref: BackendTaskDefinition
+    Type: AWS::ECS::Service
+  BackendServiceDiscoveryEntry:
+    Properties:
+      Description: '"backend" service discovery entry in Cloud Map'
+      DnsConfig:
+        DnsRecords:
+        - TTL: 60
+          Type: A
+        RoutingPolicy: MULTIVALUE
+      HealthCheckCustomConfig:
+        FailureThreshold: 1
+      Name: backend
+      NamespaceId:
+        Ref: CloudMap
+    Type: AWS::ServiceDiscovery::Service
+  BackendTCP4000Listener:
+    Properties:
+      DefaultActions:
+      - ForwardConfig:
+          TargetGroups:
+          - TargetGroupArn:
+              Ref: BackendTCP4000TargetGroup
+        Type: forward
+      LoadBalancerArn:
+        Ref: LoadBalancer
+      Port: 4000
+      Protocol: TCP
+    Type: AWS::ElasticLoadBalancingV2::Listener
+  BackendTCP4000TargetGroup:
+    Properties:
+      Port: 4000
+      Protocol: TCP
+      Tags:
+      - Key: com.docker.compose.project
+        Value: rails-app-fromzero
+      TargetType: ip
+      VpcId: vpc-0c9369fad1e29217c
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+  BackendTaskDefinition:
+    Properties:
+      ContainerDefinitions:
+      - Command:
+        - ap-northeast-1.compute.internal
+        - rails-app-fromzero.local
+        Essential: false
+        Image: docker/ecs-searchdomain-sidecar:1.0
+        LogConfiguration:
+          LogDriver: awslogs
+          Options:
+            awslogs-group:
+              Ref: LogGroup
+            awslogs-region:
+              Ref: AWS::Region
+            awslogs-stream-prefix: rails-app-fromzero
+        Name: Backend_ResolvConf_InitContainer
+      - Command:
+        - bash
+        - -c
+        - |-
+          rm -f tmp/pids/server.pid &&
+          bin/rails db:create &&
+          bundle exec rails db:migrate &&
+          bundle exec rails s -p 4000 -b '0.0.0.0'
+        DependsOn:
+        - Condition: SUCCESS
+          ContainerName: Backend_ResolvConf_InitContainer
+        Environment:
+        - Name: TZ
+          Value: Asia/Tokyo
+        Essential: true
+        Image: 056267658604.dkr.ecr.ap-northeast-1.amazonaws.com/minipj/todo-app-backend:latest@sha256:2183c14c22205764e65e911e871544ab7b92334d8d38432273b433ddb656c06e
+        LinuxParameters: {}
+        LogConfiguration:
+          LogDriver: awslogs
+          Options:
+            awslogs-group:
+              Ref: LogGroup
+            awslogs-region:
+              Ref: AWS::Region
+            awslogs-stream-prefix: rails-app-fromzero
+        Name: backend
+        PortMappings:
+        - ContainerPort: 4000
+          HostPort: 4000
+          Protocol: tcp
+      Cpu: "256"
+      ExecutionRoleArn:
+        Ref: BackendTaskExecutionRole
+      Family: rails-app-fromzero-backend
+      Memory: "512"
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+      - FARGATE
+    Type: AWS::ECS::TaskDefinition
+  BackendTaskExecutionRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Condition: {}
+          Effect: Allow
+          Principal:
+            Service: ecs-tasks.amazonaws.com
+        Version: 2012-10-17
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+      Tags:
+      - Key: com.docker.compose.project
+        Value: rails-app-fromzero
+      - Key: com.docker.compose.service
+        Value: backend
+    Type: AWS::IAM::Role
+  CloudMap:
+    Properties:
+      Description: Service Map for Docker Compose project rails-app-fromzero
+      Name: rails-app-fromzero.local
+      Vpc: vpc-0c9369fad1e29217c
+    Type: AWS::ServiceDiscovery::PrivateDnsNamespace
+  Cluster:
+    Properties:
+      ClusterName: rails-app-fromzero
+      Tags:
+      - Key: com.docker.compose.project
+        Value: rails-app-fromzero
+    Type: AWS::ECS::Cluster
+  Default3000Ingress:
+    Properties:
+      CidrIp: 0.0.0.0/0
+      Description: frontend:3000/tcp on default network
+      FromPort: 3000
+      GroupId:
+        Ref: DefaultNetwork
+      IpProtocol: TCP
+      ToPort: 3000
+    Type: AWS::EC2::SecurityGroupIngress
+  Default4000Ingress:
+    Properties:
+      CidrIp: 0.0.0.0/0
+      Description: backend:4000/tcp on default network
+      FromPort: 4000
+      GroupId:
+        Ref: DefaultNetwork
+      IpProtocol: TCP
+      ToPort: 4000
+    Type: AWS::EC2::SecurityGroupIngress
+  DefaultNetwork:
+    Properties:
+      GroupDescription: rails-app-fromzero Security Group for default network
+      Tags:
+      - Key: com.docker.compose.project
+        Value: rails-app-fromzero
+      - Key: com.docker.compose.network
+        Value: rails-app-fromzero_default
+      VpcId: vpc-0c9369fad1e29217c
+    Type: AWS::EC2::SecurityGroup
+  DefaultNetworkIngress:
+    Properties:
+      Description: Allow communication within network default
+      GroupId:
+        Ref: DefaultNetwork
+      IpProtocol: "-1"
+      SourceSecurityGroupId:
+        Ref: DefaultNetwork
+    Type: AWS::EC2::SecurityGroupIngress
+  FrontendService:
+    DependsOn:
+    - FrontendTCP3000Listener
+    Properties:
+      Cluster:
+        Fn::GetAtt:
+        - Cluster
+        - Arn
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+      DeploymentController:
+        Type: ECS
+      DesiredCount: 1
+      LaunchType: FARGATE
+      LoadBalancers:
+      - ContainerName: frontend
+        ContainerPort: 3000
+        TargetGroupArn:
+          Ref: FrontendTCP3000TargetGroup
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+          - Ref: DefaultNetwork
+          Subnets:
+          - subnet-0e141cc935a96f9bf
+          - subnet-004447ce0a79fce0d
+      PlatformVersion: 1.4.0
+      PropagateTags: SERVICE
+      SchedulingStrategy: REPLICA
+      ServiceRegistries:
+      - RegistryArn:
+          Fn::GetAtt:
+          - FrontendServiceDiscoveryEntry
+          - Arn
+      Tags:
+      - Key: com.docker.compose.project
+        Value: rails-app-fromzero
+      - Key: com.docker.compose.service
+        Value: frontend
+      TaskDefinition:
+        Ref: FrontendTaskDefinition
+    Type: AWS::ECS::Service
+  FrontendServiceDiscoveryEntry:
+    Properties:
+      Description: '"frontend" service discovery entry in Cloud Map'
+      DnsConfig:
+        DnsRecords:
+        - TTL: 60
+          Type: A
+        RoutingPolicy: MULTIVALUE
+      HealthCheckCustomConfig:
+        FailureThreshold: 1
+      Name: frontend
+      NamespaceId:
+        Ref: CloudMap
+    Type: AWS::ServiceDiscovery::Service
+  FrontendTCP3000Listener:
+    Properties:
+      DefaultActions:
+      - ForwardConfig:
+          TargetGroups:
+          - TargetGroupArn:
+              Ref: FrontendTCP3000TargetGroup
+        Type: forward
+      LoadBalancerArn:
+        Ref: LoadBalancer
+      Port: 3000
+      Protocol: TCP
+    Type: AWS::ElasticLoadBalancingV2::Listener
+  FrontendTCP3000TargetGroup:
+    Properties:
+      Port: 3000
+      Protocol: TCP
+      Tags:
+      - Key: com.docker.compose.project
+        Value: rails-app-fromzero
+      TargetType: ip
+      VpcId: vpc-0c9369fad1e29217c
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+  FrontendTaskDefinition:
+    Properties:
+      ContainerDefinitions:
+      - Command:
+        - ap-northeast-1.compute.internal
+        - rails-app-fromzero.local
+        Essential: false
+        Image: docker/ecs-searchdomain-sidecar:1.0
+        LogConfiguration:
+          LogDriver: awslogs
+          Options:
+            awslogs-group:
+              Ref: LogGroup
+            awslogs-region:
+              Ref: AWS::Region
+            awslogs-stream-prefix: rails-app-fromzero
+        Name: Frontend_ResolvConf_InitContainer
+      - Command:
+        - yarn
+        - run
+        - dev
+        DependsOn:
+        - Condition: SUCCESS
+          ContainerName: Frontend_ResolvConf_InitContainer
+        Environment:
+        - Name: NODE_ENV
+          Value: development
+        - Name: NUXT_HOST
+          Value: 0.0.0.0
+        - Name: NUXT_PORT
+          Value: "3000"
+        Essential: true
+        Image: 056267658604.dkr.ecr.ap-northeast-1.amazonaws.com/minipj/todo-app-frontend:latest@sha256:23c5bc023b4fa3560c5acd2fd26f3871e79dbf2ee28aa496c5d4dd67a9f04d5e
+        LinuxParameters: {}
+        LogConfiguration:
+          LogDriver: awslogs
+          Options:
+            awslogs-group:
+              Ref: LogGroup
+            awslogs-region:
+              Ref: AWS::Region
+            awslogs-stream-prefix: rails-app-fromzero
+        Name: frontend
+        PortMappings:
+        - ContainerPort: 3000
+          HostPort: 3000
+          Protocol: tcp
+      Cpu: "256"
+      ExecutionRoleArn:
+        Ref: FrontendTaskExecutionRole
+      Family: rails-app-fromzero-frontend
+      Memory: "512"
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+      - FARGATE
+    Type: AWS::ECS::TaskDefinition
+  FrontendTaskExecutionRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Condition: {}
+          Effect: Allow
+          Principal:
+            Service: ecs-tasks.amazonaws.com
+        Version: 2012-10-17
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+      Tags:
+      - Key: com.docker.compose.project
+        Value: rails-app-fromzero
+      - Key: com.docker.compose.service
+        Value: frontend
+    Type: AWS::IAM::Role
+  LoadBalancer:
+    Properties:
+      LoadBalancerAttributes:
+      - Key: load_balancing.cross_zone.enabled
+        Value: "true"
+      Scheme: internet-facing
+      Subnets:
+      - subnet-0e141cc935a96f9bf
+      - subnet-004447ce0a79fce0d
+      Tags:
+      - Key: com.docker.compose.project
+        Value: rails-app-fromzero
+      Type: network
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+  LogGroup:
+    Properties:
+      LogGroupName: /docker-compose/rails-app-fromzero
+    Type: AWS::Logs::LogGroup
