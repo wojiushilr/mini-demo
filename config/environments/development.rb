@@ -43,8 +43,8 @@ Rails.application.configure do
   config.active_record.verbose_query_logs = true
 
   # Blocked hostエラー対応
-  # config.hosts << "todo-app-backend"
-  config.hosts << "rails-app-fromzero-nginx-1"
+  # すべてのホスト名に対するリクエストを通過させることができる。
+  config.hosts.clear
 
   # Raises error for missing translations.
   # config.action_view.raise_on_missing_translations = true

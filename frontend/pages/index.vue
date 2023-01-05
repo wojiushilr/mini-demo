@@ -7,8 +7,8 @@
 
 <script>
 /* eslint-disable no-console */
-import TodoTop from '../../components/TodoTop'
-import TodoCard from '../../components/TodoCard'
+import TodoTop from '../components/TodoTop'
+import TodoCard from '../components/TodoCard'
 
 export default {
   components: {

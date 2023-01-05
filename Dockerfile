@@ -21,4 +21,4 @@ VOLUME /app/log
 
 EXPOSE 4000
 
-CMD ["bundle", "exec", "puma", "-C", "config/puma.rb"]
+# CMD ["bundle", "exec", "puma", "-C", "config/puma.rb"]

@@ -59,21 +59,16 @@ export default {
     //   : 'localhost:4000',
       proxy: true
   },
-  // frontend と backendの間でnginxを挟んでいる
   proxy: {
     '/api/': {
       // target: 'http://35.78.113.79/', 
-      target: 'http://rails-app-fromzero-nginx-1/',
+      // target: 'http://todo-app-backend:4000',
+      target: process.env.TODO_APP_API_HOST,
+      // target: 'http://localhost:4000',
+      // target: 'http://todo-app-nginx/',
       // pathRewrite: {'^/api/': '/'}
     },
   },
-
-  // proxy: {
-  //   '/api/': {
-  //     target: 'http://todo-app-backend:4000',
-  //     // pathRewrite: {'^/api/': ''}
-  //   },
-  // },
 
   vuetify: {
     customVariables: ['~/assets/variables.scss'],

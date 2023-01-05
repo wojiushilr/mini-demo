@@ -1,83 +1,35 @@
 version: "3"
-
+x-aws-vpc: "vpc-0c9369fad1e29217c" #minipj用VPC指定
 services:
   backend:
     container_name: todo-app-backend
     build: .
-    image: todo-app-backend
+    # image: todo-app-backend
+    image: 056267658604.dkr.ecr.ap-northeast-1.amazonaws.com/minipj/todo-app-backend #ECRにpush&参照
     # -j4 並列処理をするコマンド 
-    # docker build 段階で　bundle install -j4 したので、ここはbundle installを取り除く
     command: |
       bash -c "rm -f tmp/pids/server.pid &&
       bin/rails db:create &&
       bundle exec rails db:migrate &&
-      bundle exec puma -C config/puma.rb"
+      bundle exec rails s -p 4000 -b '0.0.0.0'"
     tty: true
     stdin_open: true
-    # volumes 変更点
-    volumes:
-      # - ./:/app:cached # devモードの場合はファイル反映を楽にしたい場合はコメントアウト 
-      - public_data:/app/public
-      - tmp_data:/app/tmp
-      - log_data:/app/log
-      - /app/vendor
-      - /app/.git
     environment:
       - TZ=Asia/Tokyo
-      - TODO_APP_API_HOST=http://localhost:80
+      - TODO_APP_API_HOST=http://localhost:4000
       - TODO_APP_FRONT_HOST=http://localhost:3000
       - CORS_ALLOWED_ORIGINS=http://localhost:3000
     ports:
       - 4000:4000
-    networks:
-      app_net:
-        ipv4_address: "172.10.0.3"
-
-  # 参考: https://toranoana-lab.hatenablog.com/entry/2020/08/14/175706
-  nginx:
-    build: ./nginx/
-    volumes:
-      - public_data:/app/public
-      - tmp_data:/app/tmp
-    ports:
-      - 80:80
-    depends_on:
-      - backend
-    networks:
-      app_net:
-        ipv4_address: "172.10.0.4"
 
   frontend:
     container_name: todo-app-frontend
     build: ./frontend/
-    image: todo-app-frontend
+    image: 056267658604.dkr.ecr.ap-northeast-1.amazonaws.com/minipj/todo-app-frontend #ECRにpush&参照
     environment:
       - NODE_ENV=development
       - NUXT_HOST=0.0.0.0
       - NUXT_PORT=3000
-      - TODO_APP_API_HOST=http://localhost:80
-      - TODO_APP_FRONT_HOST=http://localhost:3000
-      - TODO_APP_FRONT_HOST_DEV=http://35.78.113.79:3000
     ports:
       - 3000:3000
     command: "yarn run dev"
-    networks:
-      app_net:
-        ipv4_address: "172.10.0.5"
-    depends_on:
-      - backend
- 
-networks:
-  app_net:
-    driver: bridge
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.10.0.0/24
-
-volumes:
-  postgres_data:
-  bundle_data:
-  public_data:
-  tmp_data:
-  log_data:

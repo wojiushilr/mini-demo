@@ -16,4 +16,4 @@ RUN yarn exec nuxt build
 
 EXPOSE 3000
 
-CMD ["yarn", "run", "nuxt", "start"]
+# CMD ["yarn", "run", "nuxt", "start"]
