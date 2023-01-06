@@ -1,5 +1,7 @@
 version: "3"
-x-aws-vpc: "vpc-0c9369fad1e29217c" ##TODO、VPC指定
+# デプロイしたいVPC指定
+x-aws-vpc: ${AWS_VPC} 
+
 services:
   backend:
     container_name: todo-app-backend
@@ -7,7 +9,7 @@ services:
       context: . # docker build コマンドを実行する場所
       dockerfile: ./docker/Dockerfile.backend
     # image: todo-app-backend
-    image: 056267658604.dkr.ecr.ap-northeast-1.amazonaws.com/minipj/todo-app-backend #TODO、ECRにpush&参照
+    image: ${BACKEND_IMAGE}  
     # -j4 並列処理をするコマンド 
     command: |
       bash -c "rm -f tmp/pids/server.pid &&
@@ -26,7 +28,7 @@ services:
     build: 
       context: .
       dockerfile: ./docker/Dockerfile.frontend
-    image: 056267658604.dkr.ecr.ap-northeast-1.amazonaws.com/minipj/todo-app-frontend #TODO、ECRにpush&参照
+    image: ${FRONTEND_IMAGE}
     environment:
       - NODE_ENV=development
       - NUXT_HOST=0.0.0.0
